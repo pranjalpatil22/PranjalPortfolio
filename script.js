@@ -91,32 +91,71 @@ class MultiCarousel {
     emailjs.init("H57_BeVWxJ69IRMew"); // Replace with your actual public key
 })();
 
-// Contact form submission
+// Contact form submission - using button click instead of form submit
 document.addEventListener('DOMContentLoaded', () => {
     const contactForm = document.getElementById('contactForm');
+    const submitBtn = document.querySelector('.submit-btn');
     
-    if (contactForm) {
-        contactForm.addEventListener('submit', function(e) {
+    if (contactForm && submitBtn) {
+        submitBtn.addEventListener('click', function(e) {
             e.preventDefault();
             
-            // Get form data
-            const formData = {
-                name: document.getElementById('name').value,
-                email: document.getElementById('email').value,
-                subject: document.getElementById('subject').value,
-                message: document.getElementById('message').value
+            // Try multiple methods to get values
+            const name1 = document.getElementById('name').value;
+            const name2 = contactForm.querySelector('#name').value;
+            const name3 = contactForm.name.value;
+            
+            console.log('Different methods for name:', {
+                method1: `'${name1}'`,
+                method2: `'${name2}'`,
+                method3: `'${name3}'`
+            });
+            
+            // Use the method that works
+            const name = name1 || name2 || name3 || '';
+            const email = document.getElementById('email').value || contactForm.querySelector('#email').value || contactForm.email.value || '';
+            const subject = document.getElementById('subject').value || contactForm.querySelector('#subject').value || contactForm.subject.value || '';
+            const message = document.getElementById('message').value || contactForm.querySelector('#message').value || contactForm.message.value || '';
+            
+            console.log('Final values:', {
+                name: `'${name.trim()}'`,
+                email: `'${email.trim()}'`,
+                subject: `'${subject.trim()}'`,
+                message: `'${message.trim()}'`
+            });
+            
+            // Validation
+            if (!name.trim() || !email.trim() || !subject.trim() || !message.trim()) {
+                console.log('Validation failed - empty fields detected');
+                showNotification('Please fill in all fields.', 'error');
+                return;
+            }
+            
+            if (!isValidEmail(email.trim())) {
+                showNotification('Please enter a valid email address.', 'error');
+                return;
+            }
+            
+            const emailData = {
+                name: name.trim(),
+                email: email.trim(),
+                subject: subject.trim(),
+                message: message.trim()
             };
             
+            console.log('Email Data:', emailData); // Debug log
+            
             // Show loading state
-            const submitBtn = contactForm.querySelector('.submit-btn');
             const originalContent = submitBtn.innerHTML;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
             submitBtn.disabled = true;
             
             // Send email using EmailJS
-            emailjs.send('service_7c8lry2', 'template_umf3l2f', formData)
+            emailjs.send('service_7c8lry2', 'template_umf3l2f', emailData)
                 .then(function(response) {
-                    console.log('SUCCESS!', response.status, response.text);
+                    console.log('EmailJS SUCCESS!', response);
+                    console.log('Response status:', response.status);
+                    console.log('Response text:', response.text);
                     
                     // Show success message
                     showNotification('Message sent successfully! I\'ll get back to you soon.', 'success');
@@ -129,10 +168,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     submitBtn.disabled = false;
                 })
                 .catch(function(error) {
-                    console.log('FAILED...', error);
+                    console.error('EmailJS FAILED:', error);
+                    console.error('Error details:', error.text || error.message);
                     
-                    // Show error message
-                    showNotification('Failed to send message. Please try again or email me directly.', 'error');
+                    // Show specific error message
+                    let errorMessage = 'Failed to send message. ';
+                    if (error.text === 'The user does not have permission to use the service') {
+                        errorMessage += 'EmailJS service not properly configured. Please check your service settings.';
+                    } else if (error.text === 'The template ID is not valid') {
+                        errorMessage += 'Template ID is incorrect. Please check your EmailJS template.';
+                    } else if (error.text === 'The service ID is not valid') {
+                        errorMessage += 'Service ID is incorrect. Please check your EmailJS service.';
+                    } else {
+                        errorMessage += 'Please try again or email me directly at pranjalpatilk22@gmail.com';
+                    }
+                    
+                    showNotification(errorMessage, 'error');
                     
                     // Restore button
                     submitBtn.innerHTML = originalContent;
@@ -141,6 +192,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+// Email validation helper
+function isValidEmail(email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+}
 
 // Notification system
 function showNotification(message, type) {
